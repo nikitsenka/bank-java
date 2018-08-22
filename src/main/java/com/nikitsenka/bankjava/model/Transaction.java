@@ -1,8 +1,12 @@
 package com.nikitsenka.bankjava.model;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 public class Transaction {
     private Integer id;
+    @JsonProperty("from_client_id")
     private Integer fromClientId;
+    @JsonProperty("to_client_id")
     private Integer toClientId;
     private Integer amount;
 
@@ -30,5 +34,21 @@ public class Transaction {
 
     public Integer getAmount() {
         return amount;
+    }
+
+    public void setId(Integer id) {
+        this.id = id;
+    }
+
+    public void setFromClientId(Integer fromClientId) {
+        this.fromClientId = fromClientId;
+    }
+
+    public void setToClientId(Integer toClientId) {
+        this.toClientId = toClientId;
+    }
+
+    public void setAmount(Integer amount) {
+        this.amount = amount;
     }
 }
