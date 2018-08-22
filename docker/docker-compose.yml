@@ -1,0 +1,22 @@
+version: '3.1'
+
+services:
+
+  db:
+    image: postgres
+    restart: always
+    ports:
+      - 5432:5432
+    environment:
+      POSTGRES_PASSWORD: test1234
+
+  bank-java:
+    image: bank-java
+    restart: always
+    ports:
+      - 8080:8080
+    links:
+      - db
+    environment:
+      POSTGRES_HOST: db
+
