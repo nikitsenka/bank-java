@@ -3,34 +3,25 @@ package com.nikitsenka.bankjava;
 import com.nikitsenka.bankjava.model.Balance;
 import com.nikitsenka.bankjava.model.Client;
 import com.nikitsenka.bankjava.model.Transaction;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Repository;
+
+import javax.sql.DataSource;
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.Properties;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Repository;
 
 @Repository
 public class BankPostgresRepository {
 
-    @Value("${POSTGRES_HOST:localhost}")
-    private String host;
-
-    @Value("${postgres.db.user:postgres}")
-    private String user;
-
-    @Value("${postgres.db.password:test1234}")
-    private String password;
-
-    @Value("${postgres.db.name:postgres}")
-    private String name;
+    @Autowired
+    private DataSource dataSource;
 
     public Client createClient(Client client) {
         try (Connection con = getConnection();
-            PreparedStatement ps = insertClientStatement(con, client);
-            ResultSet rs = ps.executeQuery()) {
+             PreparedStatement ps = insertClientStatement(con, client);
+             ResultSet rs = ps.executeQuery()) {
             if (rs.next()) {
                 int id = rs.getInt(1);
                 client.setId(id);
@@ -47,8 +38,8 @@ public class BankPostgresRepository {
 
     public Transaction createTransaction(Transaction transaction) {
         try (Connection con = getConnection();
-            PreparedStatement ps = insertTransactionStatement(con, transaction);
-            ResultSet rs = ps.executeQuery()) {
+             PreparedStatement ps = insertTransactionStatement(con, transaction);
+             ResultSet rs = ps.executeQuery()) {
 
             if (rs.next()) {
                 int id = rs.getInt(1);
@@ -67,8 +58,8 @@ public class BankPostgresRepository {
     public Balance getBalance(Integer clientId) {
         Balance balance = new Balance();
         try (Connection con = getConnection();
-            PreparedStatement ps = getBalanceStatement(con, clientId);
-            ResultSet rs = ps.executeQuery()) {
+             PreparedStatement ps = getBalanceStatement(con, clientId);
+             ResultSet rs = ps.executeQuery()) {
 
             if (rs.next()) {
                 int amount = rs.getInt(1);
@@ -84,7 +75,7 @@ public class BankPostgresRepository {
         return balance;
     }
 
-    private PreparedStatement getBalanceStatement(Connection con, Integer clientId) throws SQLException  {
+    private PreparedStatement getBalanceStatement(Connection con, Integer clientId) throws SQLException {
         PreparedStatement ps = con.prepareStatement("SELECT debit - credit FROM (SELECT COALESCE(sum(amount), 0) AS debit FROM transaction WHERE to_client_id = ? ) a, ( SELECT COALESCE(sum(amount), 0) AS credit FROM transaction WHERE from_client_id = ? ) b;");
         ps.setInt(1, clientId);
         ps.setInt(2, clientId);
@@ -108,20 +99,11 @@ public class BankPostgresRepository {
         return ps;
     }
 
-    private Connection getConnection() {
-        String url = "jdbc:postgresql://" + host + "/" + name;
-        Properties props = new Properties();
-        props.setProperty("user", user);
-        props.setProperty("password", password);
-        props.setProperty("ssl", "disable");
-        Connection conn = null;
-        try {
-            conn = DriverManager.getConnection(url, props);
-        } catch (SQLException e) {
-            System.out.println("Error open DB connection.");
-            System.out.println(e);
-        }
-        return conn;
+    private Connection getConnection() throws SQLException {
+        return dataSource.getConnection();
     }
 
+    public void setDataSource(final DataSource dataSource) {
+        this.dataSource = dataSource;
+    }
 }
