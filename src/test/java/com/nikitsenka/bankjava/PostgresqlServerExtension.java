@@ -23,13 +23,20 @@ import org.junit.jupiter.api.extension.ExtensionContext;
 import org.springframework.boot.jdbc.DataSourceBuilder;
 import org.springframework.jdbc.core.JdbcOperations;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.images.builder.ImageFromDockerfile;
 
 import javax.sql.DataSource;
+import java.io.File;
 
 public final class PostgresqlServerExtension implements BeforeAllCallback, AfterAllCallback {
 
-    private final PostgreSQLContainer<?> container = new PostgreSQLContainer<>("postgres:11.1");
+    private static GenericContainer container = new GenericContainer(
+            new ImageFromDockerfile()
+                    .withFileFromFile("Dockerfile", new File("docker/db.dockerfile"))
+                    .withFileFromFile("CreateDB.sql", new File("CreateDB.sql")))
+            .withEnv("POSTGRES_PASSWORD", "test1234")
+            .withExposedPorts(5432);
 
     private HikariDataSource dataSource;
 
@@ -46,11 +53,11 @@ public final class PostgresqlServerExtension implements BeforeAllCallback, After
         this.container.start();
 
         this.dataSource = DataSourceBuilder.create()
-            .type(HikariDataSource.class)
-            .url(this.container.getJdbcUrl())
-            .username(this.container.getUsername())
-            .password(this.container.getPassword())
-            .build();
+                .type(HikariDataSource.class)
+                .url(String.format("jdbc:postgresql://localhost:%d/postgres", container.getMappedPort(5432)))
+                .username("postgres")
+                .password("test1234")
+                .build();
 
         this.dataSource.setMaximumPoolSize(1);
 

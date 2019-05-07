@@ -22,16 +22,6 @@ class BankPostgresRepositoryTest {
     @BeforeEach
     void createTable() {
         repository.setDataSource(SERVER.getDataSource());
-        getJdbcOperations().execute("CREATE TABLE test ( value INTEGER )");
-        getJdbcOperations().execute("CREATE TABLE client(id SERIAL PRIMARY KEY NOT NULL, name VARCHAR(20), email VARCHAR(20), phone VARCHAR(20));");
-        getJdbcOperations().execute("CREATE TABLE transaction(id SERIAL PRIMARY KEY NOT NULL, from_client_id INTEGER, to_client_id INTEGER, amount INTEGER)");
-    }
-
-    @AfterEach
-    void dropTable() {
-        getJdbcOperations().execute("DROP TABLE test");
-        getJdbcOperations().execute("DROP TABLE client");
-        getJdbcOperations().execute("DROP TABLE transaction");
     }
 
     @Test
@@ -51,24 +41,8 @@ class BankPostgresRepositoryTest {
 
     @Test
     void getBalance() {
-        Client firstClient = repository.createClient(new Client(0, "", "", ""));
-        Client secondClient = repository.createClient(new Client(0, "", "", ""));
-        repository.createTransaction(new Transaction(0, firstClient.getId(), secondClient.getId(), 100));
-        Balance firstClientBalance = repository.getBalance(firstClient.getId());
-        assertEquals(Integer.valueOf(-100), firstClientBalance.getBalance());
-        Balance secondClientBalance = repository.getBalance(secondClient.getId());
-        assertEquals(Integer.valueOf(100), secondClientBalance.getBalance());
+        Balance secondClientBalance = repository.getBalance(100);
+        assertEquals(Integer.valueOf(0), secondClientBalance.getBalance());
     }
-
-    public JdbcOperations getJdbcOperations() {
-        JdbcOperations jdbcOperations = SERVER.getJdbcOperations();
-
-        if (jdbcOperations == null) {
-            throw new IllegalStateException("JdbcOperations not yet initialized");
-        }
-
-        return jdbcOperations;
-    }
-
 
 }
