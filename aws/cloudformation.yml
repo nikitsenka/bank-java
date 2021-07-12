@@ -61,7 +61,7 @@ Resources:
                 Fn::Base64: !Sub |
                     #!/bin/bash -xe
                     yum -y update
-                    yum -y install git vim
+                    yum -y install git
                     git clone https://github.com/nikitsenka/bank-java.git
                     cd bank-java/docker/db
                     docker build --no-cache -t bank-db .
