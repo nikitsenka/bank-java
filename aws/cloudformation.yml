@@ -1,47 +1,75 @@
-AWSTemplateFormatVersion: '2010-09-09'
+AWSTemplateFormatVersion: "2010-09-09"
+Parameters:
+    LatestAmiId:
+        Type: "AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>"
+        Default: "/aws/service/ecs/optimized-ami/amazon-linux-2/recommended/image_id"
 Resources:
-    BankEC2Instance:
-        Description: Ec2 instance with running latest bank-vertx app.
+    BankIP:
+        Type: AWS::EC2::EIP
+    TestEC2Instance:
+        Description: Ec2 instance for running performance tests
         Type: AWS::EC2::Instance
+        DependsOn:
+            - PostgresEC2Instance
         Properties:
-            InstanceType: 't2.micro'
-            SecurityGroups: [!Ref 'InstanceSecurityGroup']
-            KeyName: 'ivan_aws_key'
-            ImageId: 'ami-0a313d6098716f372'
+            InstanceType: "m4.large"
+            Monitoring: true
+            SecurityGroups: [ !Ref "InstanceSecurityGroup" ]
+            PlacementGroupName: !Ref "ClusterPlacementGroup"
+            KeyName: "bank-key"
+            ImageId: !Ref LatestAmiId
+            Tags:
+                - Key: Name
+                  Value: bank-test
+    BankEC2Instance:
+        Description: Ec2 instance with running latest bank app.
+        Type: AWS::EC2::Instance
+        DependsOn:
+            - PostgresEC2Instance
+        Properties:
+            InstanceType: "m4.large"
+            Monitoring: true
+            SecurityGroups: [ !Ref "InstanceSecurityGroup" ]
+            PlacementGroupName: !Ref "ClusterPlacementGroup"
+            KeyName: "bank-key"
+            ImageId: !Ref LatestAmiId
             UserData:
-                Fn::Base64: !Sub |
-                    #!/bin/bash -xe
-                    apt-get -y update
-                    apt-get install -y git
-                    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
-                    add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
-                    apt-get -y update
-                    apt-get install -y docker-ce
-                    service docker start
-                    git clone https://github.com/nikitsenka/bank-java.git
-                    docker build --no-cache -t bank-java -f bank-java/docker/app.dockerfile bank-java
-                    docker run --name bank-java -p 80:8080 -e POSTGRES_HOST=3.214.55.121 -d bank-java
+                Fn::Base64:
+                    Fn::Sub:
+                        - |
+                            #!/bin/bash -xe
+                            yum -y update
+                            yum -y install git
+                            git clone https://github.com/nikitsenka/bank-java.git
+                            docker build --no-cache -t bank-java -f bank-java/docker/app.dockerfile bank-java
+                            docker run --name bank-java -p 80:8080 -e POSTGRES_HOST=${DbPrivateIP} -d bank-java
+                        - DbPrivateIP: !GetAtt PostgresEC2Instance.PrivateIp
+            Tags:
+                - Key: Name
+                  Value: bank-app
     PostgresEC2Instance:
         Description: Postgres database.
         Type: AWS::EC2::Instance
         Properties:
-            InstanceType: 'd2.xlarge'
-            SecurityGroups: [!Ref 'InstanceSecurityGroup']
-            KeyName: 'ivan_aws_key'
-            ImageId: 'ami-0a313d6098716f372'
+            InstanceType: "m4.large"
+            Monitoring: true
+            SecurityGroups: [ !Ref "InstanceSecurityGroup" ]
+            PlacementGroupName: !Ref "ClusterPlacementGroup"
+            KeyName: "bank-key"
+            ImageId: !Ref LatestAmiId
             UserData:
                 Fn::Base64: !Sub |
                     #!/bin/bash -xe
-                    apt-get -y update
-                    apt-get install -y git
-                    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
-                    add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
-                    apt-get -y update
-                    apt-get install -y docker-ce
-                    service docker start
+                    yum -y update
+                    yum -y install git vim
                     git clone https://github.com/nikitsenka/bank-java.git
-                    docker build --no-cache -t bank-db -f bank-java/docker/db.dockerfile bank-java
+                    cd bank-java/docker/db
+                    docker build --no-cache -t bank-db .
                     docker run --name bank-db -p 5432:5432 -e POSTGRES_PASSWORD=test1234 -d bank-db
+            Tags:
+                - Key: Name
+                  Value: bank-db
+
     InstanceSecurityGroup:
         Type: AWS::EC2::SecurityGroup
         Properties:
@@ -50,35 +78,47 @@ Resources:
                 - IpProtocol: tcp
                   FromPort: 22
                   ToPort: 22
-                  CidrIp: '0.0.0.0/0'
+                  CidrIp: "0.0.0.0/0"
                 - IpProtocol: tcp
                   FromPort: 80
                   ToPort: 80
-                  CidrIp: '0.0.0.0/0'
+                  CidrIp: "0.0.0.0/0"
                 - IpProtocol: tcp
                   FromPort: 5432
                   ToPort: 5432
-                  CidrIp: '0.0.0.0/0'
+                  CidrIp: "0.0.0.0/0"
+
+    ClusterPlacementGroup:
+        Type: AWS::EC2::PlacementGroup
+        Properties:
+            Strategy: cluster
+
     BankIPAssoc:
         Type: AWS::EC2::EIPAssociation
         Properties:
-            InstanceId: !Ref 'BankEC2Instance'
-            EIP: '54.162.142.65'
-    PostgresIPAssoc:
-        Type: AWS::EC2::EIPAssociation
-        Properties:
-            InstanceId: !Ref 'PostgresEC2Instance'
-            EIP: '3.214.55.121'
+            InstanceId: !Ref "BankEC2Instance"
+            EIP: !Ref BankIP
 Outputs:
     InstanceId:
         Description: InstanceId of the newly created EC2 instance
-        Value: !Ref 'BankEC2Instance'
+        Value: !Ref "BankEC2Instance"
     AZ:
         Description: Availability Zone of the newly created EC2 instance
-        Value: !GetAtt [BankEC2Instance, AvailabilityZone]
+        Value: !GetAtt [ BankEC2Instance, AvailabilityZone ]
     PublicDNS:
         Description: Public DNSName of the newly created EC2 instance
-        Value: !GetAtt [BankEC2Instance, PublicDnsName]
+        Value: !GetAtt [ BankEC2Instance, PublicDnsName ]
     PublicIP:
-        Description: Public IP address of the newly created EC2 instance
-        Value: !GetAtt [BankEC2Instance, PublicIp]
+        Description: Public IP address of the bank testing EC2 instance
+        Value: !GetAtt [ TestEC2Instance, PublicIp ]
+    PrivateIP:
+        Description: Private IP address of the bank app  EC2 instance
+        Value: !GetAtt [ BankEC2Instance, PrivateIp ]
+    CLIcommand:
+        Description: CLI command to view the user data on Mac/Linux.
+        Value:
+            Fn::Join:
+                - ""
+                - - 'aws ec2 describe-instance-attribute --instance-id '
+                  - Ref: BankEC2Instance
+                  - " --attribute userData | jq -r '.UserData.Value' | base64 --decode"
