@@ -40,7 +40,7 @@ Resources:
                             #!/bin/bash -xe
                             yum -y update
                             yum -y install git
-                            git clone https://github.com/nikitsenka/bank-java.git
+                            git clone -b upgrade https://github.com/nikitsenka/bank-java.git
                             docker build --no-cache -t bank-java -f bank-java/docker/app.dockerfile bank-java
                             docker run --name bank-java -p 80:8080 -e POSTGRES_HOST=${DbPrivateIP} -d bank-java
                         - DbPrivateIP: !GetAtt PostgresEC2Instance.PrivateIp
@@ -62,7 +62,7 @@ Resources:
                     #!/bin/bash -xe
                     yum -y update
                     yum -y install git
-                    git clone https://github.com/nikitsenka/bank-java.git
+                    git clone -b upgrade https://github.com/nikitsenka/bank-java.git
                     cd bank-java/docker/db
                     docker build --no-cache -t bank-db .
                     docker run --name bank-db -p 5432:5432 -e POSTGRES_PASSWORD=test1234 -d bank-db

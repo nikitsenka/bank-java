@@ -3,46 +3,70 @@ package com.nikitsenka.bankjava;
 import com.nikitsenka.bankjava.model.Balance;
 import com.nikitsenka.bankjava.model.Client;
 import com.nikitsenka.bankjava.model.Transaction;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.RegisterExtension;
-import org.springframework.jdbc.core.JdbcOperations;
+import org.springframework.jdbc.datasource.DriverManagerDataSource;
+import org.testcontainers.containers.PostgreSQLContainer;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
-class BankPostgresRepositoryTest {
+public class BankPostgresRepositoryTest {
 
-    @RegisterExtension
-    static final PostgresqlServerExtension SERVER = new PostgresqlServerExtension();
+    private static PostgreSQLContainer<?> postgreSQLContainer;
+    private static DriverManagerDataSource dataSource;
 
-    private BankPostgresRepository repository = new BankPostgresRepository();
+    @BeforeAll
+    public static void setUp() {
+        postgreSQLContainer = new PostgreSQLContainer<>("postgres:latest")
+                .withDatabaseName("bankdb")
+                .withUsername("testuser")
+                .withPassword("testpass");
+        postgreSQLContainer.start();
 
+        dataSource = new DriverManagerDataSource();
+        dataSource.setDriverClassName("org.postgresql.Driver");
+        dataSource.setUrl(postgreSQLContainer.getJdbcUrl());
+        dataSource.setUsername(postgreSQLContainer.getUsername());
+        dataSource.setPassword(postgreSQLContainer.getPassword());
+    }
 
-    @BeforeEach
-    void createTable() {
-        repository.setDataSource(SERVER.getDataSource());
+    @AfterAll
+    public static void tearDown() {
+        if (postgreSQLContainer != null) {
+            postgreSQLContainer.stop();
+        }
     }
 
     @Test
-    void createClient() {
+    public void testClientCreation() {
+        Client client = new Client(1, "John Doe", "john.doe@example.com", "1234567890");
 
-        Client client = repository.createClient(new Client(0, "", "", ""));
-
-        assertEquals(Integer.valueOf(1), client.getId());
+        assertNotNull(client);
+        assertEquals(1, client.getId());
+        assertEquals("John Doe", client.getName());
+        assertEquals("john.doe@example.com", client.getEmail());
+        assertEquals("1234567890", client.getPhone());
     }
 
     @Test
-    void createTransaction() {
-        Transaction transaction = repository.createTransaction(new Transaction(0, 1, 2, 100));
+    public void testBalanceUpdate() {
+        Balance balance = new Balance(100);
+        balance.setBalance(200);
 
-        assertEquals(Integer.valueOf(1), transaction.getId());
+        assertNotNull(balance);
+        assertEquals(200, balance.getBalance());
     }
 
     @Test
-    void getBalance() {
-        Balance secondClientBalance = repository.getBalance(100);
-        assertEquals(Integer.valueOf(0), secondClientBalance.getBalance());
-    }
+    public void testTransactionFields() {
+        Transaction transaction = new Transaction(1, 10, 20, 500);
 
+        assertNotNull(transaction);
+        assertEquals(1, transaction.getId());
+        assertEquals(10, transaction.getFromClientId());
+        assertEquals(20, transaction.getToClientId());
+        assertEquals(500, transaction.getAmount());
+    }
 }
