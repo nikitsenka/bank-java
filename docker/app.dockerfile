@@ -1,11 +1,19 @@
-FROM openjdk:11
+FROM gradle:8.5.0-jdk21 AS build
 
-RUN apt-get update && apt-get install -y git maven
+WORKDIR /app
 
-RUN git clone https://github.com/nikitsenka/bank-java.git
+COPY build.gradle settings.gradle ./
 
-WORKDIR bank-java
-RUN mvn clean install
+COPY src src
 
-CMD java -jar target/bank-java-0.0.1-SNAPSHOT.jar
+RUN gradle build --no-daemon -x test
 
+FROM openjdk:21-jdk-slim
+
+WORKDIR /app
+
+COPY --from=build /app/build/libs/*.jar app.jar
+
+EXPOSE 8080
+
+ENTRYPOINT ["java", "-jar", "app.jar"]
