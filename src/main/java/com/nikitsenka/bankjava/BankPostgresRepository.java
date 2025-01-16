@@ -37,9 +37,13 @@ public class BankPostgresRepository {
     }
 
     public Balance getBalance(Integer clientId) {
-        String sql = "SELECT (COALESCE(SUM(CASE WHEN to_client_id = ? THEN amount ELSE 0 END), 0) - " +
-                "COALESCE(SUM(CASE WHEN from_client_id = ? THEN amount ELSE 0 END), 0)) AS balance " +
-                "FROM transaction";
+        String sql = """
+                  SELECT
+                    COALESCE(SUM(CASE WHEN to_client_id = ? THEN amount ELSE 0 END), 0) -
+                    COALESCE(SUM(CASE WHEN from_client_id = ? THEN amount ELSE 0 END), 0) AS balance
+                  FROM transaction
+                  WHERE from_client_id = ? OR to_client_id = ?;
+                """;
         Integer balance = jdbcTemplate.queryForObject(sql, new Object[]{clientId, clientId}, Integer.class);
         return new Balance(balance);
     }
