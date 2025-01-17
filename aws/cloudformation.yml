@@ -6,21 +6,6 @@ Parameters:
 Resources:
     BankIP:
         Type: AWS::EC2::EIP
-    TestEC2Instance:
-        Description: Ec2 instance for running performance tests
-        Type: AWS::EC2::Instance
-        DependsOn:
-            - PostgresEC2Instance
-        Properties:
-            InstanceType: "m4.large"
-            Monitoring: true
-            SecurityGroups: [ !Ref "InstanceSecurityGroup" ]
-            PlacementGroupName: !Ref "ClusterPlacementGroup"
-            KeyName: "bank-key"
-            ImageId: !Ref LatestAmiId
-            Tags:
-                - Key: Name
-                  Value: bank-test
     BankEC2Instance:
         Description: Ec2 instance with running latest bank app.
         Type: AWS::EC2::Instance
@@ -108,9 +93,6 @@ Outputs:
     PublicDNS:
         Description: Public DNSName of the newly created EC2 instance
         Value: !GetAtt [ BankEC2Instance, PublicDnsName ]
-    PublicIP:
-        Description: Public IP address of the bank testing EC2 instance
-        Value: !GetAtt [ TestEC2Instance, PublicIp ]
     PrivateIP:
         Description: Private IP address of the bank app  EC2 instance
         Value: !GetAtt [ BankEC2Instance, PrivateIp ]
