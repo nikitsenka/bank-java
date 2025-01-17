@@ -7,11 +7,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
-import javax.sql.DataSource;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
-
 @Repository
 public class BankPostgresRepository {
 
@@ -38,11 +33,11 @@ public class BankPostgresRepository {
 
     public Balance getBalance(Integer clientId) {
         String sql = """
-                  SELECT
+                SELECT (
                     COALESCE(SUM(CASE WHEN to_client_id = ? THEN amount ELSE 0 END), 0) -
-                    COALESCE(SUM(CASE WHEN from_client_id = ? THEN amount ELSE 0 END), 0) AS balance
-                  FROM transaction
-                  WHERE from_client_id = ? OR to_client_id = ?;
+                    COALESCE(SUM(CASE WHEN from_client_id = ? THEN amount ELSE 0 END), 0)
+                ) AS balance
+                FROM transaction
                 """;
         Integer balance = jdbcTemplate.queryForObject(sql, new Object[]{clientId, clientId}, Integer.class);
         return new Balance(balance);

@@ -1,4 +1,4 @@
-FROM gradle:8.5.0-jdk21 AS build
+FROM --platform=linux/amd64 gradle:8.5.0-jdk21 AS build
 
 WORKDIR /app
 
@@ -8,7 +8,7 @@ COPY src src
 
 RUN gradle build --no-daemon -x test
 
-FROM openjdk:21-jdk-slim
+FROM --platform=linux/amd64 openjdk:21-jdk-slim
 
 WORKDIR /app
 
